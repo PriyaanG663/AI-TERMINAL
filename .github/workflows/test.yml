@@ -1,14 +1,14 @@
 name: Python Terminal Test 
 on:
-push:
-  branches: [main]
+  push:
+    branches: [main]
 jobs:
   run-tests:
     runs-on: windows-latest
     steps:
     - name : Checkout Repository Code 
       uses: actions/checkout@v4
-      
+
     - name: Setup Python Runtime Environment
       uses: actions/setup-python@v5
       with:
