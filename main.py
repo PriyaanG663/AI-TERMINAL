@@ -1,9 +1,38 @@
 import os
 import subprocess
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel 
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
 
+load_dotenv()
 console=Console()
+def initialize_gemini():
+    """ initializes the gemini model using langchain"""
+    return ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash",
+        temperature=0.0
+    )
+
+def ask_gemini_for_command(llm,user_intent):
+    """ Translates natural language into a clean windows powershell command"""
+    system_instruction=(
+        "You are the internal translation engine of an AI-powered Windows Terminal.\n"
+        "Your task is to translate the user's natural language request into a valid Windows PowerShell or CMD command.\n\n"
+        "RULES:\n"
+        "1. Output ONLY the raw command string ready to run.\n"
+        "2. Do NOT wrap your output in markdown syntax like ```powershell or ```.\n"
+        "3. Do NOT include explanations, introduction text, warnings, or politeness.\n"
+        "4. Focus entirely on Windows 11 environments."
+    )
+    prompt_template=ChatPromptTemplate.from_messages([
+        ("system",system_instruction),
+        ("user","{user_request}")
+    ])
+    chain =prompt_template | llm
+    response=chain.invoke({"user_request":user_intent})
+    return response.content.strip()
 
 def execute_windows_command(command):
     """
@@ -63,23 +92,43 @@ def execute_windows_command(command):
             "returncode": -1
         }
 def main():
+    if not os.getenv("GOOGLE_API_KEY"):
+        console.print("[bold red]Error: GOOGLE_API_KEY is missing from your .env file.[/bold red]")
+        return
+
+    llm = initialize_gemini()
+
+    tog='AI Terminal'
+
     console.print(
         Panel(
-            "[bold magenta]Project-1: AI Terminal Shell[/bold magenta]\n"
-            "[dim]Milestone 2: Raw Command Execution Engine[/dim]",
+            "[bold magenta]Project-1: AI Terminal Shell[/bold magenta]\n",
             title="Initialized"
         )
     )
     console.print("Type [bold red]'exit'[\bold red] to quit the session.\n")
     while True:
         try:
-            user_input=console.input(f"[bold cyan]AI-Shell:{os.getcwd()}>[/bold cyan] ").strip()
+            user_input=console.input(f"[bold cyan]{tog}:{os.getcwd()}>[/bold cyan] ").strip()
             if user_input.lower()=='exit':
                 console.print("[bold yellow]Exiting AI Terminal... Goodbye![/bold yellow]")
                 break
+            if user_input.lower()=='toggle':
+                console.print("[bold orange]Changing Terminal...[/bold orange]")
+                if tog=='AI Terminal':
+                    tog='Terminal'
+                else:
+                    tog='AI Terminal'
+                continue
+
             if not user_input:
                 continue
-            response = execute_windows_command(user_input)
+            generated_cmd=user_input
+            if tog=='AI Terminal':
+                with console.status("[bold green]Gemini is generating command...[/bold green]"):
+                    generated_cmd = ask_gemini_for_command(llm, user_input)
+                console.print(Panel(f"[bold yellow]AI generated command:[/bold yellow] {generated_cmd}", border_style="dim"))
+            response = execute_windows_command(generated_cmd)
             if response["success"]:
                 if response["stdout"]:
                     console.print("[bold green]Output:[/bold green]")
