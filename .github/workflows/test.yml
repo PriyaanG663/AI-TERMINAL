@@ -39,4 +39,4 @@ jobs:
       env:
         GOOGLE_API_KEY: "dummy_value_for_ci_pipeline"
       run: |
-        pytest tests/test-exe.py
+        py -m pytest tests/test-exe.py
