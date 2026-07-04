@@ -1,0 +1,36 @@
+name: Python Terminal Test 
+on:
+push:
+  branches: [main]
+jobs:
+  run-tests:
+    runs-on: windows-latest
+    steps:
+    - name : Checkout Repository Code 
+      uses: actions/checkout@v4
+      
+    - name: Setup Python Runtime Environment
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Cache Python Dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~\AppData\Local\pip\Cache
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install Project Requirements
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run Test Engine Suite via PyTest
+      # We provide a dummy GOOGLE_API_KEY environment variable so our application validation check passes,
+      # but our tests will mock the model out anyway so no real credits are ever billed!
+      env:
+        GOOGLE_API_KEY: "dummy_value_for_ci_pipeline"
+      run: |
+        pytest
